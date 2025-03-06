@@ -14,6 +14,12 @@ variable "candidato" {
   default     = "Abinadabe Oliveira"
 }
 
+variable "ssh_allowed_ip" {
+  description = "O IP permitido para acessar a instância via SSH"
+  type        = string
+  default     = "192.168.1.1/32"  # Exemplo de IP específico, altere conforme necessário
+}
+
 resource "tls_private_key" "ec2_key" {
   algorithm = "RSA"
   rsa_bits  = 2048
@@ -76,20 +82,18 @@ resource "aws_route_table_association" "main_association" {
 
 resource "aws_security_group" "main_sg" {
   name        = "${var.projeto}-${var.candidato}-sg"
-  description = "Permitir SSH de qualquer lugar e todo o tráfego de saída"
+  description = "Permitir SSH de um IP específico e todo o tráfego de saída"
   vpc_id      = aws_vpc.main_vpc.id
 
-  # Regras de entrada
   ingress {
-    description      = "Allow SSH from anywhere"
+    description      = "Allow SSH from specific IP"
     from_port        = 22
     to_port          = 22
     protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
+    cidr_blocks      = [var.ssh_allowed_ip]  # Variável de IP
     ipv6_cidr_blocks = ["::/0"]
   }
 
-  # Regras de saída
   egress {
     description      = "Allow all outbound traffic"
     from_port        = 0
@@ -149,7 +153,7 @@ resource "aws_instance" "debian_ec2" {
 output "private_key" {
   description = "Chave privada para acessar a instância EC2"
   value       = tls_private_key.ec2_key.private_key_pem
-  sensitive   = true
+  sensitive   = true  # Garantir que a chave privada não seja exposta acidentalmente
 }
 
 output "ec2_public_ip" {

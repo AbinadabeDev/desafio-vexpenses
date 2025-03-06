@@ -229,3 +229,55 @@ output "ec2_public_ip" {
 }
 ```
 Os outputs fornecem a chave privada gerada e o IP público da instância EC2, essenciais para o acesso à máquina e para automação de fluxos de trabalho.
+
+
+## Instruções de Uso
+
+### Pré-requisitos
+
+1. **Terraform**: Instale a versão mais recente do [Terraform](https://www.terraform.io/downloads.html).
+2. **AWS CLI**: Configure o [AWS CLI](https://aws.amazon.com/cli/) com suas credenciais para que o Terraform possa interagir com sua conta AWS.
+
+### Passos
+
+1. Clone este repositório para sua máquina local:
+   ```bash
+   git clone https://github.com/seu-usuario/vexpenses-terraform-aws.git
+   cd vexpenses-terraform-aws
+   ```
+
+2. Inicialize o Terraform:
+   ```bash
+   terraform init
+   ```
+
+3. Valide a configuração para garantir que não há erros:
+   ```bash
+   terraform validate
+   ```
+
+4. Planeje a execução do Terraform para visualizar as mudanças que serão aplicadas:
+   ```bash
+   terraform plan
+   ```
+
+5. Aplique a configuração para criar os recursos na AWS:
+   ```bash
+   terraform apply
+   ```
+
+   Após a execução, o Terraform irá solicitar sua confirmação para prosseguir. Digite `yes` para aplicar as mudanças.
+
+6. Após a criação dos recursos, você pode visualizar as saídas, como o IP público da instância EC2 e a chave privada gerada.
+
+### Limpeza
+
+Para destruir todos os recursos criados, use o comando:
+```bash
+terraform destroy
+```
+Digite `yes` quando solicitado para confirmar.
+
+## Conclusão
+
+Esse repositório proporciona uma infraestrutura básica em AWS usando Terraform, permitindo o gerenciamento de uma instância EC2

@@ -11,7 +11,7 @@ variable "projeto" {
 variable "candidato" {
   description = "Nome do candidato"
   type        = string
-  default     = "SeuNome"
+  default     = "Abinadabe Oliveira"
 }
 
 resource "tls_private_key" "ec2_key" {

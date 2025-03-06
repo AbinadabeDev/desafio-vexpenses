@@ -1,41 +1,184 @@
-Descrição detalhada e técnica do que o código faz
+# VExpenses - Terraform AWS Infrastructure
 
-O primeiro bloco de código define o provedor em que região os recursos serão criados. Neste caso especificamente, fala-se de us-east-1 (Costa Leste dos Estados Unidos), segundo a documentação da Amazon na região Norte da Virgínia.
+Este repositório contém código em Terraform para criar uma infraestrutura na AWS, configurada para suportar um projeto DevOps. O código define e configura os recursos da AWS, como VPC, sub-rede, instância EC2, regras de segurança e muito mais. O objetivo é fornecer uma base sólida para quem deseja entender e automatizar o processo de provisionamento de infraestrutura na nuvem com AWS e Terraform.
 
-O segundo e terceiro bloco de código define duas variáveis, a saber, projeto e candidato. Elas serão usadas para personalizar os recursos criados.
+## Descrição do Projeto
 
-No quarto bloco de código temos o recurso tls_private_key que é o responsável por gerar uma chave privada de criptografia. Além do tipo em primeiro momento, contamos com a definição personalizada do recurso que passa a ter a referência de ec2_key para o referenciarmos em outras partes do código dentro do Terraform.
-O tipo de criptografia usada será a RSA, amplamente utilizado para segurança em conexões de rede. Especifica-se também o tamanho da chave, sendo esta de 2048 bits, considerado um tamanho seguro mantendo equilíbrio e segurança.
-Em um contexto prático, essa chave será usada para configurar acessos SSH ou conexões seguras com instâncias EC2 na AWS.
+Este código Terraform implementa a infraestrutura necessária para o projeto **VExpenses**, simulando a criação de uma instância EC2 na AWS, configuração de rede e segurança, utilizando boas práticas de organização e automação.
 
-O quinto bloco de código faz referência a criação de um par de chaves AWS com o recurso aws_key_pair, sendo uma privada, utilizada localmente e não passível de compartilhamento e a segunda pública. usada para configurar o acesso à instância EC2.
-O nome interno para identificação é ec2_key_pair. Já o nome do par de chaves será a junção da variável projeto com candidato seguidas por -key. Essa personalização ajuda a pontuar a nomear o par de chaves com base em projeto e candidato específicos.
-Por fim temos a chave pública gerada pela chave privada (local) RSA de 2048 bits. A chave pública em questão é usada no formato OpenSSH, permitindo assim o acesso à instância EC2.
+## Estrutura do Código
 
-Com o sexto bloco de código descreve a criação de uma VPC na AWS. Em termos gerais o VPC é uma rede isolada dentro da nuvem da AWS, permitindo controlar de forma detalhada os recursos. Em uma objetiva explicação do código podemos apontar que aws_vpc criará uma VPC na AWS, nos permitindo criar instâncias EC2, databases e outros serviços da AWS.
-O CIDR block = "10.0.0.0/16" por sua vez permite a obtenção de vários endereços IPs. De acordo com o iptp.net, chegamos a 65.534 possíveis endereços. Habilitamos o suporte a DNS, ou seja, poderemos usar nomes de domínio para resolver endereços IP dentro da PVC e conseguinte, habilitamos a atribuição de nomes de host DNS para instâncias EC2. Ao criar uma instância ela terá um único nome DNS exclusivo.
-As tags são metadados utilizados que são associados aos recursos. Neste caso, as tags são usadas para atribuir um nome descritivo à VPC, que será uma combinação das variáveis projeto e candidato. Em ambientes maiores e complexos pela quantidade de ações e implementações no infra é algo mais do que essencial.
+### 1. **Provedor AWS**
+O código começa com a definição do provedor, especificando a região onde os recursos serão criados.
 
-No sétimo bloco de código já se introduz a aws_subnet criando uma sub-rede dentro da VPC da AWS. A sub-rede vai dividir a rede maior da PVC em partes menores otimizando processos e isolando recursos de forma eficiente. Atribui-se ao recurso o nome main_subnet como já o fazemos por padrão em todos os recursos aplicados em nossas linhas de código.
-A sub-rede será criada dentro da VPC. O vpc_id é o identificados da VPC que fora criada anteriormente. Ou seja, a sub-rede main_subnet será criada dentro da VPC main_vpc.
-Com o cidr_block = "10.0.1.0/24" definimos o intervalo de endereços IP para a sub-rede. Diferentemente da primeira definição, aqui temos o endereço IP com 24 bits nos deixando com 256 opções disponíveis. Assim sendo, essa rede é uma subdivisão da rede maior da VPC.
-A zona de disponibilidade também é definida neste bloco através do comando availability_zone = "us-east-1a" fazendo menção a região citada no primeiro bloco. Essas zonas de disponibilidade são data centers fisicamente separados, mas próximos uns dos outros. Assim sendo, a sub-rede será criada nessa mesma zona.
-As tags seguem o mesmo formato do que antes já fora citado, agrupamos os resultados das duas variáveis declaradas no bloco dois para que possamos dar um nome descritivo à sub-rede.
+```hcl
+provider "aws" {
+  region = "us-east-1"
+}
+```
+A região definida é us-east-1 (Costa Leste dos EUA), o que especifica que os recursos serão criados na AWS Norte da Virgínia.
 
-O oitavo bloco tem o recurso "aws_internet_gateway" "main_igw". Cria-se um internet gateway que é o responsável por fornecer uma conexão entre a VPC e a internet pública. Logo associamos o vpc_id ao IGW, sendo este id o mesmo criado no bloco anterior. As tags seguem o mesmo padrão de associação aos recursos, sendo definidas com base nas duas variáveis.
+### 2. **Variáveis de Configuração**
 
+```hcl
+variable "projeto" {
+description = "Nome do projeto"
+type        = string
+default     = "VExpenses"
+}
 
-No novo bloco de código configura-se a tabela de rotas chamada main_route_table para a VPC especificada no id do bloco 7. A tabela de rotas será associada à VPC que foi criada anteriormente e ela direcionará o tráfego dentro dessa VPC.
-A rota padrão é configurada com o bloco CIDR 0.0.0.0/0 que corresponde a qualquer destino na internet. A parte gateway_id = aws_internet_gateway.main_igw.id define que qualquer tráfego fora da VPC será destinado para o Internet Gateway.
+variable "candidato" {
+description = "Nome do candidato"
+type        = string
+default     = "Abinadabe Oliveira"
+}
+```
+As variáveis projeto e candidato são utilizadas para personalizar os recursos criados, como os nomes de chaves e recursos.
 
-No décimo bloco conectamos a tabela de rotas à subnet permitindo que esta utilize a tabela para definir como o tráfego de rede será roteado. Após isso qualquer instância EC2 ou recurso seguirás as rotas configuradas na tabela de rotas.
+### 3. **Chave Privada para SSH**
+A chave privada RSA é criada para permitir o acesso seguro à instância EC2 via SSH.
+```hcl
+resource "tls_private_key" "ec2_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+```
+A chave privada será utilizada para configurar o acesso SSH a uma instância EC2.
 
-No decimo primeiro abordamos a parte de segurança. A regra de entrada (ingress) permite que qualquer máquina independente do seu IP se conecte via SSH à instância EC2. A porta 22 é padrão para SSH, tornado possível que qualquer pessoa com a chave privada se conecte à instância.
-A regra de saída (egress) permite que qualquer tráfego de saída seja enviado da instância para qualquer destino, incluindo chamadas para APIs externas, acesso à web ou comunicação com outras instâncias.
-As configurações de segurança não são as mais recomendadas pois neste caso, as conexões via SSH estão sendo permitidas de qualquer lugar, o que pode ser um risco. Além disso nenhuma restrição de saída também é definida, o que configura mais um risco.
+### 4. **Par de Chaves SSH na AWS**
+O par de chaves é criado para ser associado à instância EC2, contendo a chave pública.
+```hcl
+resource "aws_key_pair" "ec2_key_pair" {
+  key_name   = "${var.projeto}-${var.candidato}-key"
+  public_key = tls_private_key.ec2_key.public_key_openssh
+}
+```
+A chave pública gerada é associada à instância EC2.
 
-O décimo segundo bloco define o recurso que irá procurar a última AMI Debian 12 com base no Nome, Tipo de Visualização e Proprietário. debian-12-amd64-* garante uma imagem do Debian 12 para a arquitetura AMD64. A hvm é o tipo de visualização que oferece o melhor desempenho e a propriedade fica a cargo da AWS sob o seu id.
+### 5. **VPC (Virtual Private Cloud)**
+Uma VPC é criada para isolar os recursos da AWS dentro de uma rede privada.
+```hcl
+resource "aws_vpc" "main_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-vpc"
+  }
+}
+```
+A VPC tem um bloco CIDR de 10.0.0.0/16, proporcionando até 65.534 endereços IP.
 
-Finalmente no décimo terceiro bloco criamos uma instância EC2 na AWS com as características até aqui mencionadas mas que valem ser citadas. AMI do Debian 12; Tipo t2.micro que é adequado para testes; Associação com uma subnet específica dentro de uma VPC; Utiliza-se um par de chaves SSH; O grupo de segurança permite acesso de qualquer lugar; A instância terá um endereço publico para acesso externo; um disco de 20gb é configurado para o sistema com o tipo de volume gp2 e a configuração para deletar o disco quando a instância for terminada; Script de inicialização atualiza e faz o upgrade do sistema assim que a instância é lançada; A instância é etiquetada com base no nome das variáveis do projeto e candidato.
+### 6. **Sub-rede na VPC**
+A sub-rede é criada dentro da VPC para isolar ainda mais os recursos.
+```hcl
+resource "aws_subnet" "main_subnet" {
+  vpc_id            = aws_vpc.main_vpc.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "us-east-1a"
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-subnet"
+  }
+}
+```
+O intervalo de endereços IP para a sub-rede é definido como 10.0.1.0/24, proporcionando 256 endereços IP.
 
-A conclusão se dá com o décimo quarto bloco de código. Aqui temos dois outputs, um com a chave privada e o outro com a chave pública. Essas informações são cruciais para a segurança de toda a aplicação e não devem ser expostas de forma alguma. O output definido como private_key deixa claro que a chave privada será exposta e o seu valor é a chave gerada que deveria ser guardada e ocultada de terceiros como vemos em tls_private_key.ec2_key.private_key_pem ainda que esteja marcada como sensitive = true não é correto a disponibilizar ou deixar exposta em um output.
+### 7. **Internet Gateway**
+O Internet Gateway é configurado para permitir a comunicação entre a VPC e a internet pública.
+```hcl
+resource "aws_internet_gateway" "main_igw" {
+  vpc_id = aws_vpc.main_vpc.id
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-igw"
+  }
+}
+```
+### 8. **Tabela de Roteamento**
+A tabela de roteamento é configurada para direcionar o tráfego da VPC para a internet via Internet Gateway.
+
+```hcl
+resource "aws_route_table" "main_route_table" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main_igw.id
+  }
+
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-route_table"
+  }
+}
+```
+
+### 9. **Associação da Tabela de Roteamento**
+A tabela de roteamento é associada à sub-rede.
+```hcl
+resource "aws_route_table_association" "main_association" {
+  subnet_id      = aws_subnet.main_subnet.id
+  route_table_id = aws_route_table.main_route_table.id
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-route_table_association"
+  }
+}
+```
+
+### 10. **Grupo de Segurança**
+O grupo de segurança é configurado para permitir conexões SSH (porta 22) de qualquer origem e todo o tráfego de saída.
+```hcl
+resource "aws_security_group" "main_sg" {
+  name        = "${var.projeto}-${var.candidato}-sg"
+  description = "Permitir SSH de qualquer lugar e todo o tráfego de saída"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    description      = "Allow SSH from anywhere"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    description      = "Allow all outbound traffic"
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-sg"
+  }
+}
+```
+
+### 11. **Instância EC2 com Debian 12**
+A instância EC2 é lançada com a AMI Debian 12, tipo t2.micro e associada ao par de chaves e grupo de segurança criados.
+```hcl
+resource "aws_instance" "debian_ec2" {
+  ami             = data.aws_ami.debian12.id
+  instance_type   = "t2.micro"
+  subnet_id       = aws_subnet.main_subnet.id
+  key_name        = aws_key_pair.ec2_key_pair.key_name
+  security_groups = [aws_security_group.main_sg.name]
+
+  tags = {
+    Name = "${var.projeto}-${var.candidato}-ec2-instance"
+  }
+}
+```
+### 12. **Outputs**
+```hcl
+output "private_key" {
+  value     = tls_private_key.ec2_key.private_key_pem
+  sensitive = true
+}
+
+output "public_key" {
+  value = tls_private_key.ec2_key.public_key_openssh
+}
+```
+
